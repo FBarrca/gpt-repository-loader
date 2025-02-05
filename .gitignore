@@ -24,3 +24,5 @@ venv/
 *.swo
 *.swn
 *~
+
+/build
