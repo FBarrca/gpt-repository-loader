@@ -2,12 +2,19 @@ import os
 import sys
 import fnmatch
 
-def get_ignore_list(ignore_file_path):
-    """Reads the ignore file and returns a list of patterns."""
+def get_ignore_list(ignore_file_paths):
+    """Reads the ignore files and returns a combined list of patterns."""
     ignore_list = []
-    if os.path.exists(ignore_file_path):
-        with open(ignore_file_path, 'r') as ignore_file:
-            ignore_list = [line.strip() for line in ignore_file if line.strip()]
+    for ignore_file_path in ignore_file_paths:
+        if os.path.exists(ignore_file_path):
+            with open(ignore_file_path, 'r') as ignore_file:
+                # Filter out empty lines and comments
+                patterns = [
+                    line.strip() 
+                    for line in ignore_file 
+                    if line.strip() and not line.startswith('#')
+                ]
+                ignore_list.extend(patterns)
     return ignore_list
 
 def should_ignore(file_path, ignore_list):
@@ -29,19 +36,20 @@ def process_repository(repo_path, ignore_list, output_file):
                 output_file.write(f"{contents}\n")
 
 def main(repo_path, output_file_path, preamble_file=None):
-    """Main function that processes the repository while respecting .gptignore."""
+    """Main function that processes the repository while respecting both .gitignore and .gptignore."""
     
-    # Use .gptignore from the current working directory if available, else from repo_path
-    cwd_ignore_file = os.path.join(os.getcwd(), ".gptignore")
-    print(cwd_ignore_file)
-    repo_ignore_file = os.path.join(repo_path, ".gptignore")
+    # Check for ignore files in both current directory and repo path
+    cwd_gpt_ignore = os.path.join(os.getcwd(), ".gptignore")
+    repo_gpt_ignore = os.path.join(repo_path, ".gptignore")
+    cwd_git_ignore = os.path.join(os.getcwd(), ".gitignore")
+    repo_git_ignore = os.path.join(repo_path, ".gitignore")
 
-    if os.path.exists(cwd_ignore_file):
-        ignore_file_path = cwd_ignore_file
-    else:
-        ignore_file_path = repo_ignore_file
+    # Use ignore files from current working directory if available, else from repo_path
+    gpt_ignore_path = cwd_gpt_ignore if os.path.exists(cwd_gpt_ignore) else repo_gpt_ignore
+    git_ignore_path = cwd_git_ignore if os.path.exists(cwd_git_ignore) else repo_git_ignore
 
-    ignore_list = get_ignore_list(ignore_file_path)
+    # Combine patterns from both ignore files
+    ignore_list = get_ignore_list([gpt_ignore_path, git_ignore_path])
     
     with open(output_file_path, 'w') as output_file:
         if preamble_file:
